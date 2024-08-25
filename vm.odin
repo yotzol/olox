@@ -54,7 +54,7 @@ run :: proc() -> InterpretResult {
                 case .Subtract    : stack_binary_op(.Subtract)
                 case .Multiply    : stack_binary_op(.Multiply)
                 case .Divide      : stack_binary_op(.Divide) 
-                case .Negate      : stack_push(-stack_pop())
+                case .Negate      : vm.stack[len(vm.stack)-1] *= -1
                 case .Return      : 
                         value_print(stack_pop())
                         fmt.println()
