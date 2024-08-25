@@ -3,17 +3,6 @@ package olox
 import "core:fmt"
 
 
-OpCode :: enum byte {
-        Constant,
-        ConstantLong,
-        Add,
-        Subtract,
-        Multiply,
-        Divide,
-        Negate,
-        Return,
-}
-
 Chunk :: struct {
         code     : [dynamic]byte,
         constants: [dynamic]Value,
@@ -21,18 +10,17 @@ Chunk :: struct {
         prev_line: int,
 }
 
-write_chunk :: proc {
-        write_chunk_byte,
-        write_chunk_opcode,
+chunk_write :: proc {
+        chunk_write_byte,
+        chunk_write_opcode,
+        chunk_write_constant, // having this in the same proc can lead to errors rn but will be solved later (e.g.: chunk_write(_, 2, _ will take "2" as a byte, not as a Value)
 }
 
-@(private="file")
-write_chunk_opcode :: proc(chunk: ^Chunk, op: OpCode, line: int) {
-        write_chunk_byte(chunk, byte(op), line)
+chunk_write_opcode :: proc(chunk: ^Chunk, op: OpCode, line: int) {
+        chunk_write_byte(chunk, byte(op), line)
 }
 
-@(private="file")
-write_chunk_byte :: proc(chunk: ^Chunk, b: byte, line: int) {
+chunk_write_byte :: proc(chunk: ^Chunk, b: byte, line: int) {
         append(&chunk.code, b)
 
         // if line already in RLE array, increment line count
@@ -46,26 +34,26 @@ write_chunk_byte :: proc(chunk: ^Chunk, b: byte, line: int) {
         }
 }
 
-free_chunk :: proc(chunk: ^Chunk) {
+chunk_free :: proc(chunk: ^Chunk) {
         clear_dynamic_array(&chunk.code)
         clear_dynamic_array(&chunk.constants)
 }
 
-add_constant :: proc(chunk: ^Chunk, value: Value) -> int {
+chunk_add_constant :: proc(chunk: ^Chunk, value: Value) -> int {
         append(&chunk.constants, value)
         return len(chunk.constants) - 1
 }
 
-write_constant :: proc(chunk: ^Chunk, value: Value, line: int) {
-        index := add_constant(chunk, value)
+chunk_write_constant :: proc(chunk: ^Chunk, value: Value, line: int) {
+        index := chunk_add_constant(chunk, value)
         if index < 256 {
-                write_chunk_opcode(chunk, OpCode.Constant, line)
-                write_chunk_byte(chunk, byte(index), line)
+                chunk_write_opcode(chunk, OpCode.Constant, line)
+                chunk_write_byte(chunk, byte(index), line)
         } else {
                 bytes := int_to_byte3(index)
-                write_chunk_opcode(chunk, OpCode.ConstantLong, line)
-                write_chunk_byte(chunk, bytes[0], line)
-                write_chunk_byte(chunk, bytes[1], line)
-                write_chunk_byte(chunk, bytes[2], line)
+                chunk_write_opcode(chunk, OpCode.ConstantLong, line)
+                chunk_write_byte(chunk, bytes[0], line)
+                chunk_write_byte(chunk, bytes[1], line)
+                chunk_write_byte(chunk, bytes[2], line)
         }        
 }
