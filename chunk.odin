@@ -12,6 +12,7 @@ Chunk :: struct {
         code     : [dynamic]byte,
         constants: [dynamic]Value,
         lines    : [dynamic]int,
+        prev_line: int,
 }
 
 write_chunk :: proc {
@@ -27,7 +28,16 @@ write_chunk_opcode :: proc(chunk: ^Chunk, op: OpCode, line: int) {
 @(private="file")
 write_chunk_byte :: proc(chunk: ^Chunk, b: byte, line: int) {
         append(&chunk.code, b)
-        append(&chunk.lines, line)
+
+        // if line already in RLE array, increment line count
+        if chunk.prev_line == line do chunk.lines[len(chunk.lines)-1] += 1
+
+        // else add line and set count to 1
+        else {
+                append(&chunk.lines, line)
+                append(&chunk.lines, 1)
+                chunk.prev_line = line
+        }
 }
 
 free_chunk :: proc(chunk: ^Chunk) {
