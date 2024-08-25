@@ -2,8 +2,13 @@ package olox
 
 main :: proc() {
         chunk: Chunk
-        for i in 0..=256 do write_constant(&chunk, 12.34, 123)
+        write_constant(&chunk, 1.2, 123)
+        write_constant(&chunk, 3.4, 123)
+        write_chunk(&chunk, OpCode.Add, 123)
+        write_constant(&chunk, 5.6, 123)
+        write_chunk(&chunk, OpCode.Divide, 123) 
+        write_chunk(&chunk, OpCode.Negate, 123) 
         write_chunk(&chunk, OpCode.Return, 123)
-        disassemble_chunk(&chunk, "test chunk")
+        interpret(&chunk)
         free_chunk(&chunk)
 }
