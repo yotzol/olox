@@ -5,6 +5,7 @@ import "core:fmt"
 
 OpCode :: enum byte {
         Constant,
+        ConstantLong,
         Return,
 }
 
@@ -48,4 +49,18 @@ free_chunk :: proc(chunk: ^Chunk) {
 add_constant :: proc(chunk: ^Chunk, value: Value) -> int {
         append(&chunk.constants, value)
         return len(chunk.constants) - 1
+}
+
+write_constant :: proc(chunk: ^Chunk, value: Value, line: int) {
+        index := add_constant(chunk, value)
+        if index < 256 {
+                write_chunk_opcode(chunk, OpCode.Constant, line)
+                write_chunk_byte(chunk, byte(index), line)
+        } else {
+                bytes := int_to_byte3(index)
+                write_chunk_opcode(chunk, OpCode.ConstantLong, line)
+                write_chunk_byte(chunk, bytes[0], line)
+                write_chunk_byte(chunk, bytes[1], line)
+                write_chunk_byte(chunk, bytes[2], line)
+        }        
 }

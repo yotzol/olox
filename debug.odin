@@ -27,8 +27,9 @@ disassemble_instruction :: proc(chunk: ^Chunk, offset: int) -> int {
 
         instruction := OpCode(chunk.code[offset])
         switch instruction {
-        case .Constant: return constant_instruction("OP_CONSTANT", chunk, offset)
-        case .Return  : return simple_instruction("OP_RETURN", offset)
+        case .Constant    : return constant_instruction     ("OP_CONSTANT"     , chunk, offset)
+        case .ConstantLong: return constant_long_instruction("OP_CONSTANT_LONG", chunk, offset)
+        case .Return      : return simple_instruction       ("OP_RETURN"       ,        offset)
         case: 
                 fmt.println("Unknown opcode", int(instruction))
                 return offset + 1
@@ -57,4 +58,13 @@ constant_instruction :: proc(name: string, chunk: ^Chunk, offset: int) -> int {
         value_print(chunk.constants[constant])
         fmt.println("'")
         return offset+2
+}
+
+@(private="file")
+constant_long_instruction :: proc(name: string, chunk: ^Chunk, offset: int) -> int {
+        constant := byte3_to_int({chunk.code[offset+1], chunk.code[offset+2], chunk.code[offset+3]})
+        fmt.printf("%-16s %4d '", name, constant)
+        value_print(chunk.constants[constant])
+        fmt.println("'")
+        return offset+4
 }
