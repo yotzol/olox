@@ -28,10 +28,9 @@ stack_pop :: proc() -> Value {
         return pop(&vm.stack)
 }
 
-interpret :: proc(chunk: ^Chunk) -> InterpretResult {
-        vm.chunk = chunk
-        vm.ip    = 0
-        return run()
+interpret :: proc(source: string) -> InterpretResult {
+        compile(source)
+        return .Ok
 }
 
 run :: proc() -> InterpretResult {
