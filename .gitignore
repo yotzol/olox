@@ -1,2 +1,6 @@
 # executable
 olox
+src.bin
+
+# lox test suite (https://github.com/munificent/craftinginterpreters/tree/master/test)
+test/
