@@ -29,8 +29,15 @@ stack_pop :: proc() -> Value {
 }
 
 interpret :: proc(source: string) -> InterpretResult {
-        compile(source)
-        return .Ok
+        chunk: Chunk
+        defer chunk_free(&chunk)
+
+        if !compile(source, &chunk) do return .CompileError
+
+        vm.chunk = &chunk
+        vm.ip    = 0
+
+        return run()
 }
 
 run :: proc() -> InterpretResult {

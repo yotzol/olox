@@ -32,6 +32,8 @@ TokenError :: enum {
 }
 
 TokenType :: enum {
+        Error,  // used for token type checking. default enum value 
+
         // single-character tokens
         LeftParen, RightParen, LeftBrace, RightBrace,
         Comma    , Dot       , Minus    , Plus      ,
@@ -52,7 +54,7 @@ TokenType :: enum {
         Or  , Print, Return, Super,
         This, True , Var   , While,
 
-        Eof, // (no error type as errors are handled with TokenError)
+        Eof,
 }
 
 scanner_init :: proc(source: string) {
@@ -66,7 +68,7 @@ scanner_free :: proc() {
         delete(scanner.source)
 }
 
-advance :: proc() -> rune {
+scanner_advance :: proc() -> rune {
         scanner.current += 1
         return scanner.source[scanner.current-1]
 }
@@ -92,7 +94,7 @@ peek_next :: proc() -> rune {
         return scanner.source[scanner.current+1]
 }
 
-get_lexeme :: proc(token: Token) -> string {
+get_lexeme :: proc(token: ^Token) -> string {
         if token.length == 0 do return ""
         return utf8.runes_to_string(scanner.source[token.start : token.start+token.length])
 }
@@ -100,13 +102,13 @@ get_lexeme :: proc(token: Token) -> string {
 skip_whitespace :: proc() {
         for !is_at_end() {
                 switch peek() {
-                case ' ', '\r', '\t': advance()
+                case ' ', '\r', '\t': scanner_advance()
                 case '\n':
                         scanner.line += 1
-                        advance()
+                        scanner_advance()
                 case '/':
                         if peek_next() == '/' {
-                                for peek() != '\n' && !is_at_end() do advance()
+                                for peek() != '\n' && !is_at_end() do scanner_advance()
                         } else do return
                 case: return
                 }
@@ -122,7 +124,7 @@ scan_token :: proc() -> (token: Token, err: TokenError) {
 
         if is_at_end() do return make_token(.Eof), .Ok
 
-        c := advance()
+        c := scanner_advance()
 
         if is_alpha(c) do return make_identifier(), .Ok
         if is_digit(c) do return make_number()    , .Ok
@@ -163,12 +165,12 @@ make_token :: proc(type: TokenType) -> Token {
 make_string :: proc() -> (token: Token, err: TokenError) {
         for peek() != '"' && !is_at_end() {
                 if peek() == '\n' do scanner.line += 1
-                advance()
+                scanner_advance()
         }
 
         if is_at_end() do return token, .UnterminatedString
 
-        advance()
+        scanner_advance()
         return make_token(.String), .Ok
 }
 
@@ -177,11 +179,11 @@ is_digit :: proc(c: rune) -> bool {
 }
 
 make_number :: proc() -> Token {
-        for is_digit(peek()) do advance()
+        for is_digit(peek()) do scanner_advance()
 
         if peek() == '.' && is_digit(peek_next()) {
-                advance()
-                for is_digit(peek()) do advance()
+                scanner_advance()
+                for is_digit(peek()) do scanner_advance()
         }
 
         return make_token(.Number)
@@ -192,7 +194,7 @@ is_alpha :: proc(c: rune) -> bool {
 }
 
 make_identifier :: proc() -> Token {
-        for is_alpha(peek()) || is_digit(peek()) do advance()
+        for is_alpha(peek()) || is_digit(peek()) do scanner_advance()
         return make_token(identifier_type())
 }
 
