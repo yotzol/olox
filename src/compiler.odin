@@ -34,46 +34,46 @@ ParserRule :: struct {
 }
 
 RULES := map[TokenType]ParserRule {
-        .LeftParen    = {grouping     , nil          , .None  },
-        .RightParen   = {nil          , nil          , .None  },
-        .LeftBrace    = {nil          , nil          , .None  }, 
-        .RightBrace   = {nil          , nil          , .None  },
-        .Comma        = {nil          , nil          , .None  },
-        .Dot          = {nil          , nil          , .None  },
-        .Minus        = {parser_unary , parser_binary, .Term  },
-        .Plus         = {nil          , parser_binary, .Term  },
-        .Semicolon    = {nil          , nil          , .None  },
-        .Slash        = {nil          , parser_binary, .Factor},
-        .Star         = {nil          , parser_binary, .Factor},
-        .Bang         = {nil          , nil          , .None  },
-        .BangEqual    = {nil          , nil          , .None  },
-        .Equal        = {nil          , nil          , .None  },
-        .EqualEqual   = {nil          , nil          , .None  },
-        .Greater      = {nil          , nil          , .None  },
-        .GreaterEqual = {nil          , nil          , .None  },
-        .Less         = {nil          , nil          , .None  },
-        .LessEqual    = {nil          , nil          , .None  },
-        .Identifier   = {nil          , nil          , .None  },
-        .String       = {nil          , nil          , .None  },
-        .Number       = {parser_number, nil          , .None  },
-        .And          = {nil          , nil          , .None  },
-        .Class        = {nil          , nil          , .None  },
-        .Else         = {nil          , nil          , .None  },
-        .False        = {nil          , nil          , .None  },
-        .For          = {nil          , nil          , .None  },
-        .Fun          = {nil          , nil          , .None  },
-        .If           = {nil          , nil          , .None  },
-        .Nil          = {nil          , nil          , .None  },
-        .Or           = {nil          , nil          , .None  },
-        .Print        = {nil          , nil          , .None  },
-        .Return       = {nil          , nil          , .None  },
-        .Super        = {nil          , nil          , .None  },
-        .This         = {nil          , nil          , .None  },
-        .True         = {nil          , nil          , .None  },
-        .Var          = {nil          , nil          , .None  },
-        .While        = {nil          , nil          , .None  },
-        .Error        = {nil          , nil          , .None  },
-        .Eof          = {nil          , nil          , .None  },
+        .LeftParen    = {grouping      , nil          , .None      },
+        .RightParen   = {nil           , nil          , .None      },
+        .LeftBrace    = {nil           , nil          , .None      },
+        .RightBrace   = {nil           , nil          , .None      },
+        .Comma        = {nil           , nil          , .None      },
+        .Dot          = {nil           , nil          , .None      },
+        .Minus        = {parser_unary  , parser_binary, .Term      },
+        .Plus         = {nil           , parser_binary, .Term      },
+        .Semicolon    = {nil           , nil          , .None      },
+        .Slash        = {nil           , parser_binary, .Factor    },
+        .Star         = {nil           , parser_binary, .Factor    },
+        .Bang         = {parser_unary  , nil          , .None      },
+        .BangEqual    = {nil           , parser_binary, .Equality  },
+        .Equal        = {nil           , nil          , .None      },
+        .EqualEqual   = {nil           , parser_binary, .Comparison},
+        .Greater      = {nil           , parser_binary, .Comparison},
+        .GreaterEqual = {nil           , parser_binary, .Comparison},
+        .Less         = {nil           , parser_binary, .Comparison},
+        .LessEqual    = {nil           , parser_binary, .Comparison},
+        .Identifier   = {nil           , nil          , .None      },
+        .String       = {nil           , nil          , .None      },
+        .Number       = {parser_number , nil          , .None      },
+        .And          = {nil           , nil          , .None      },
+        .Class        = {nil           , nil          , .None      },
+        .Else         = {nil           , nil          , .None      },
+        .False        = {parser_literal, nil          , .None      },
+        .For          = {nil           , nil          , .None      },
+        .Fun          = {nil           , nil          , .None      },
+        .If           = {nil           , nil          , .None      },
+        .Nil          = {parser_literal, nil          , .None      },
+        .Or           = {nil           , nil          , .None      },
+        .Print        = {nil           , nil          , .None      },
+        .Return       = {nil           , nil          , .None      },
+        .Super        = {nil           , nil          , .None      },
+        .This         = {nil           , nil          , .None      },
+        .True         = {parser_literal, nil          , .None      },
+        .Var          = {nil           , nil          , .None      },
+        .While        = {nil           , nil          , .None      },
+        .Error        = {nil           , nil          , .None      },
+        .Eof          = {nil           , nil          , .None      },
 }
 
 compile :: proc(source: string, chunk: ^Chunk) -> bool {
@@ -128,7 +128,8 @@ emit_byte :: proc(b: $T)
         chunk_write(parser_current_chunk(), b, parser.previous.line)
 }
 
-emit_bytes :: proc(byte1: OpCode, byte2: byte) {
+emit_bytes :: proc(byte1: OpCode, byte2: $T)
+        where T == byte || T == OpCode {
         emit_byte(byte1)
         emit_byte(byte2)
 }
@@ -192,6 +193,7 @@ parser_unary :: proc() {
         parse_precedence(.Unary)
 
         #partial switch operator_type {
+        case .Bang : emit_byte(OpCode.Not)
         case .Minus: emit_byte(OpCode.Negate)
         }
 }
@@ -203,10 +205,24 @@ parser_binary :: proc() {
         parse_precedence(Precedence(int(rule.precedence)+1))
 
         #partial switch operator_type {
-        case .Plus : emit_byte(OpCode.Add)
-        case .Minus: emit_byte(OpCode.Subtract)
-        case .Star : emit_byte(OpCode.Multiply)
-        case .Slash: emit_byte(OpCode.Divide)
+        case .BangEqual   : emit_bytes(OpCode.Equal   , OpCode.Not)
+        case .EqualEqual  : emit_byte (OpCode.Equal               )
+        case .Greater     : emit_byte (OpCode.Greater             )
+        case .GreaterEqual: emit_bytes(OpCode.Less    , OpCode.Not)
+        case .Less        : emit_byte (OpCode.Less                )
+        case .LessEqual   : emit_bytes(OpCode.Greater , OpCode.Not)
+        case .Plus        : emit_byte (OpCode.Add                 )
+        case .Minus       : emit_byte (OpCode.Subtract            )
+        case .Star        : emit_byte (OpCode.Multiply            )
+        case .Slash       : emit_byte (OpCode.Divide              )
+        }
+}
+
+parser_literal :: proc() {
+        #partial switch parser.previous.type {
+        case .Nil  : emit_byte(OpCode.Nil)
+        case .True : emit_byte(OpCode.True)
+        case .False: emit_byte(OpCode.False)
         }
 }
 
@@ -247,5 +263,5 @@ error_at :: proc(token: ^Token, msg: string) {
         case token.length >= 0 : fmt.eprint(" at", get_lexeme(token))
         }
 
-        fmt.eprintln(": ", msg)
+        fmt.eprintln(":", msg)
 }
