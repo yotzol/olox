@@ -244,7 +244,7 @@ identifier_type :: proc() -> TokenType {
                 }
         case 't':
                 if scanner.current - scanner.start == 4 {
-                        switch peek_next() {
+                        switch scanner.source[scanner.start+1] {
                         case 'h': return check_keyword(2, 2, rest_this, .This)
                         case 'r': return check_keyword(2, 2, rest_true, .True)
                         }
